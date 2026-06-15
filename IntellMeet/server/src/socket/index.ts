@@ -47,15 +47,15 @@ export const initializeSocket = (io: Server): void => {
     });
 
     // WebRTC Signaling
-    socket.on('offer', (data: { to: string; offer: RTCSessionDescriptionInit; from: string }) => {
+    socket.on('offer', (data: { to: string; offer: { type: string; sdp?: string }; from: string }) => {
       io.to(data.to).emit('offer', { offer: data.offer, from: socket.id, userId: data.from });
     });
 
-    socket.on('answer', (data: { to: string; answer: RTCSessionDescriptionInit }) => {
+    socket.on('answer', (data: { to: string; answer: { type: string; sdp?: string } }) => {
       io.to(data.to).emit('answer', { answer: data.answer, from: socket.id });
     });
 
-    socket.on('ice-candidate', (data: { to: string; candidate: RTCIceCandidateInit }) => {
+    socket.on('ice-candidate', (data: { to: string; candidate: { candidate?: string; sdpMid?: string | null; sdpMLineIndex?: number | null } }) => {
       io.to(data.to).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
     });
 

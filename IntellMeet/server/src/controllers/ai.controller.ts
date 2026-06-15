@@ -81,7 +81,7 @@ export const summarizeMeeting = async (req: AuthRequest, res: Response): Promise
             text: item.text || '',
             assignee: null,
             status: 'pending' as const,
-            dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+            dueDate: item.dueDate ? new Date(item.dueDate) : new Date(Date.now() + 7 * 86400000),
           }));
         }
       } catch (e) {

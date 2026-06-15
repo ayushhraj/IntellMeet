@@ -45,13 +45,24 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Health check — before DB middleware so it always responds
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+});
+
 // ── DB connection cache for Vercel serverless ──────────────────────────
 let dbConnected = false;
-app.use(async (_req, _res, next) => {
+app.use(async (_req, res, next) => {
   if (!dbConnected) {
-    await connectDB();
-    await connectRedis();
-    dbConnected = true;
+    try {
+      await connectDB();
+      await connectRedis();
+      dbConnected = true;
+    } catch (err) {
+      console.error('DB connection failed:', err);
+      res.status(503).json({ message: 'Database unavailable. Check MONGODB_URI env var.' });
+      return;
+    }
   }
   next();
 });
@@ -63,11 +74,6 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/workspace', teamRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
-
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
-});
 
 // Error handler
 app.use(errorHandler);

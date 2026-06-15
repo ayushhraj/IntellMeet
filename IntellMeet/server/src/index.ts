@@ -78,20 +78,18 @@ app.use('/api/ai', aiRoutes);
 // Error handler
 app.use(errorHandler);
 
-// ── Local development only: start HTTP server + Socket.io ──────────────
-if (process.env.NODE_ENV !== 'production') {
-  const server = http.createServer(app);
-  const io = new Server(server, {
-    cors: {
-      origin: config.clientUrl,
-      methods: ['GET', 'POST'],
-      credentials: true,
-    },
-  });
-  initializeSocket(io);
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: config.clientUrl,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+initializeSocket(io);
 
-  server.listen(config.port, () => {
-    console.log(`
+server.listen(config.port, () => {
+  console.log(`
 ╔══════════════════════════════════════════════╗
 ║                                              ║
 ║   🚀 IntellMeet Server                       ║
@@ -100,10 +98,8 @@ if (process.env.NODE_ENV !== 'production') {
 ║   AI Mode: ${config.openai.apiKey ? 'OpenAI' : 'Mock/Demo'}                 ║
 ║                                              ║
 ╚══════════════════════════════════════════════╝
-    `);
-  });
-}
-// ───────────────────────────────────────────────────────────────────────
+  `);
+});
 
 // Export for Vercel serverless
 export default app;

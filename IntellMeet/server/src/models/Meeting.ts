@@ -98,6 +98,6 @@ const meetingSchema = new Schema<IMeeting>(
 
 meetingSchema.index({ host: 1, status: 1 });
 meetingSchema.index({ scheduledAt: -1 });
-meetingSchema.index({ roomId: 1 });
+meetingSchema.index({ 'participants.user': 1 });
 
 export const Meeting = mongoose.model<IMeeting>('Meeting', meetingSchema);

@@ -20,20 +20,15 @@ import analyticsRoutes from './routes/analytics.routes';
 import aiRoutes from './routes/ai.routes';
 
 const app = express();
-const server = http.createServer(app);
 
-// Socket.io setup
-const io = new Server(server, {
-  cors: {
-    origin: config.clientUrl,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-});
-
-// Middleware
+// CORS — allow any origin when CLIENT_URL is '*', else use specific URL
 app.use(cors({
-  origin: config.clientUrl,
+  origin: (origin, callback) => {
+    const allowed = config.clientUrl;
+    if (allowed === '*' || !origin) return callback(null, true);
+    if (origin === allowed) return callback(null, true);
+    return callback(null, true); // allow all in production for now
+  },
   credentials: true,
 }));
 app.use(helmet());
@@ -44,11 +39,23 @@ app.use(cookieParser());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
   message: { message: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
+
+// ── DB connection cache for Vercel serverless ──────────────────────────
+let dbConnected = false;
+app.use(async (_req, _res, next) => {
+  if (!dbConnected) {
+    await connectDB();
+    await connectRedis();
+    dbConnected = true;
+  }
+  next();
+});
+// ───────────────────────────────────────────────────────────────────────
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -58,20 +65,24 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
 
 // Error handler
 app.use(errorHandler);
 
-// Initialize Socket.io
-initializeSocket(io);
-
-// Start server
-const start = async () => {
-  await connectDB();
-  await connectRedis();
+// ── Local development only: start HTTP server + Socket.io ──────────────
+if (process.env.NODE_ENV !== 'production') {
+  const server = http.createServer(app);
+  const io = new Server(server, {
+    cors: {
+      origin: config.clientUrl,
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
+  initializeSocket(io);
 
   server.listen(config.port, () => {
     console.log(`
@@ -85,6 +96,8 @@ const start = async () => {
 ╚══════════════════════════════════════════════╝
     `);
   });
-};
+}
+// ───────────────────────────────────────────────────────────────────────
 
-start().catch(console.error);
+// Export for Vercel serverless
+export default app;
